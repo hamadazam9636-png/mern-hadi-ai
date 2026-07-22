@@ -1,0 +1,138 @@
+#include <iostream>
+#include <queue>
+using namespace std;
+
+const int SIZE = 50;
+
+// Arrays for food items
+string foodName[SIZE];
+int foodPrice[SIZE];
+int totalFood = 0;
+
+// Queue for orders
+queue<string> orders;
+
+// Variables for bill
+int totalBill = 0;
+
+void addFoodItem() {
+    cout << "\nEnter Food Name: ";
+    cin >> foodName[totalFood];
+
+    cout << "Enter Price: ";
+    cin >> foodPrice[totalFood];
+
+    totalFood++;
+
+    cout << "Food Item Added Successfully!\n";
+}
+
+void displayMenu() {
+    cout << "\n------ FOOD MENU ------\n";
+
+    for (int i = 0; i < totalFood; i++) {
+        cout << i + 1 << ". "<< foodName[i]
+        << " - Rs." << foodPrice[i] << endl;
+    }
+}
+
+void placeOrder() {
+    int choice, qty;
+
+    displayMenu();
+
+    cout << "\nEnter Item Number: ";
+    cin >> choice;
+
+    if (choice > 0 && choice <= totalFood) {
+
+        cout << "Enter Quantity: ";
+        cin >> qty;
+
+        // Add order in queue
+        orders.push(foodName[choice - 1]);
+
+        // Calculate bill
+        totalBill += foodPrice[choice - 1] * qty;
+
+        cout << "Order Placed Successfully!\n";
+    }
+    else {
+        cout << "Invalid Item Number!\n";
+    }
+}
+
+void displayBill() {
+    cout << "\n------ BILL ------\n";
+
+    queue<string> temp = orders;
+
+    while (!temp.empty()) {
+        cout << temp.front() << endl;
+        temp.pop();
+    }
+
+    cout << "Total Bill = Rs." << totalBill << endl;
+}
+
+void showOrdersQueue() {
+    cout << "\n------ ORDERS QUEUE ------\n";
+
+    queue<string> temp = orders;
+
+    while (!temp.empty()) {
+        cout << temp.front() << endl;
+        temp.pop();
+    }
+}
+
+int main() {
+
+    int choice;
+
+    do {
+        cout << "\n===== ONLINE FOOD ORDERING SYSTEM =====\n";
+        cout << "1. Add Food Item\n";
+        cout << "2. Display Menu\n";
+        cout << "3. Place Order\n";
+        cout << "4. Display Bill\n";
+        cout << "5. Show Orders Queue\n";
+        cout << "6. Exit\n";
+
+        cout << "Enter Choice: ";
+        cin >> choice;
+
+        switch (choice) {
+
+            case 1:
+                addFoodItem();
+                break;
+
+            case 2:
+                displayMenu();
+                break;
+
+            case 3:
+                placeOrder();
+                break;
+
+            case 4:
+                displayBill();
+                break;
+
+            case 5:
+                showOrdersQueue();
+                break;
+
+            case 6:
+                cout << "Program Exit!\n";
+                break;
+
+            default:
+                cout << "Invalid Choice!\n";
+        }
+
+    } while (choice != 6);
+
+    return 0;
+}
