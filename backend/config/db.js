@@ -7,7 +7,6 @@ let cachedClient = null;
 let cachedDb = null;
 
 export async function connectDB() {
-  // Agar connection pehle se cached hai toh wo return karo
   if (cachedDb) {
     return cachedDb;
   }
@@ -23,7 +22,8 @@ export async function connectDB() {
     if (!cachedClient) {
       cachedClient = new MongoClient(uri, {
         maxPoolSize: 10,
-        minPoolSize: 0
+        minPoolSize: 0,
+        serverSelectionTimeoutMS: 5000, // 30s ke bajaye 5s timeout taake serverless hang na ho
       });
       await cachedClient.connect();
     }
@@ -38,12 +38,14 @@ export async function connectDB() {
     console.log("🚀 Native MongoDB Connected Successfully");
     return cachedDb;
   } catch (error) {
-    console.error("MongoDB Connection Error:", error);
+    console.error("MongoDB Connection Error:", error.message);
+    // Connection fail hone par cache reset karein
+    cachedClient = null;
+    cachedDb = null;
     throw error;
   }
 }
 
-// Safe getDB function without throwing unhandled exceptions
 export function getDB() {
   return cachedDb;
 }

@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
-import { getDB } from "../config/db.js";
+import { connectDB } from "../config/db.js"; // Changed getDB to connectDB
 
 export async function protect(req, res, next) {
   let token;
@@ -13,7 +13,7 @@ export async function protect(req, res, next) {
         return res.status(401).json({ success: false, message: "No token provided" });
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_key");
 
       const userId = decoded.id || decoded._id || decoded.userId;
 
@@ -21,7 +21,8 @@ export async function protect(req, res, next) {
         return res.status(401).json({ success: false, message: "Invalid token payload structure" });
       }
 
-      const db = getDB();
+      // getDB() ki jagah await connectDB() use kiya hai taake null pointer crash na ho
+      const db = await connectDB();
 
       let queryId;
       try {
