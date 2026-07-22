@@ -154,47 +154,63 @@ export async function saveMessage(req, res) {
         let isVisionModel = false;
 
         if (activeImage) {
-          let filename = "";
-          if (activeImage.includes("/uploads/")) {
-            filename = activeImage.split("/uploads/")[1];
-          } else {
-            filename = path.basename(activeImage);
-          }
-
-          const filePath = path.join(process.cwd(), "uploads", filename);
-
-          if (fs.existsSync(filePath)) {
-            const ext = path.extname(filename).toLowerCase();
-            const isImageFile = [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(ext);
-
-            if (isImageFile) {
-              isVisionModel = true;
-              const imageBuffer = fs.readFileSync(filePath);
-              const base64Image = imageBuffer.toString("base64");
-              const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
-
-              messageContent = [
-                { type: "text", text: text || "Analyze this uploaded image." },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:${mimeType};base64,${base64Image}`
-                  }
+          // If the image is sent as a Base64 data string from frontend (Vercel-friendly)
+          if (activeImage.startsWith("data:image/")) {
+            isVisionModel = true;
+            messageContent = [
+              { type: "text", text: text || "Analyze this uploaded image." },
+              {
+                type: "image_url",
+                image_url: {
+                  url: activeImage
                 }
-              ];
+              }
+            ];
+          } else {
+            // Local file fallback
+            let filename = "";
+            if (activeImage.includes("/uploads/")) {
+              filename = activeImage.split("/uploads/")[1];
             } else {
-              // Safe fallback for binary documents like .docx, .pdf, etc. preventing gibberish characters
-              if ([".docx", ".doc", ".pdf", ".zip", ".exe", ".rar"].includes(ext)) {
-                const cleanName = getCleanFilename(filename);
-                messageContent = `The user uploaded a document file named (${cleanName}). Note: Raw binary text parsing for this format is limited, so please acknowledge this attachment and provide helpful insights based on the user's request: ${text || "Please explain this file."}`;
+              filename = path.basename(activeImage);
+            }
+
+            const isVercel = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+            const uploadDir = isVercel ? "/tmp" : path.join(process.cwd(), "uploads");
+            const filePath = path.join(uploadDir, filename);
+
+            if (fs.existsSync(filePath)) {
+              const ext = path.extname(filename).toLowerCase();
+              const isImageFile = [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(ext);
+
+              if (isImageFile) {
+                isVisionModel = true;
+                const imageBuffer = fs.readFileSync(filePath);
+                const base64Image = imageBuffer.toString("base64");
+                const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
+
+                messageContent = [
+                  { type: "text", text: text || "Analyze this uploaded image." },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${mimeType};base64,${base64Image}`
+                    }
+                  }
+                ];
               } else {
-                try {
-                  const fileContentText = fs.readFileSync(filePath, "utf8");
+                if ([".docx", ".doc", ".pdf", ".zip", ".exe", ".rar"].includes(ext)) {
                   const cleanName = getCleanFilename(filename);
-                  messageContent = `Here is the contents of the attached file (${cleanName}):\n\`\`\`\n${fileContentText}\n\`\`\`\n\nUser Question / Request: ${text || "Please analyze or explain this file."}`;
-                } catch (readErr) {
-                  console.error("Text file read error:", readErr);
-                  messageContent = text || "Uploaded a document file.";
+                  messageContent = `The user uploaded a document file named (${cleanName}). Note: Raw binary text parsing for this format is limited, so please acknowledge this attachment and provide helpful insights based on the user's request: ${text || "Please explain this file."}`;
+                } else {
+                  try {
+                    const fileContentText = fs.readFileSync(filePath, "utf8");
+                    const cleanName = getCleanFilename(filename);
+                    messageContent = `Here is the contents of the attached file (${cleanName}):\n\`\`\`\n${fileContentText}\n\`\`\`\n\nUser Question / Request: ${text || "Please analyze or explain this file."}`;
+                  } catch (readErr) {
+                    console.error("Text file read error:", readErr);
+                    messageContent = text || "Uploaded a document file.";
+                  }
                 }
               }
             }
