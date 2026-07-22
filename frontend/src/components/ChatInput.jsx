@@ -54,7 +54,15 @@ export default function ChatInput({ onSendMessage, loading }) {
       onSendMessage(prompt, { type: "ai-image", content: generatedImageUrl });
     } else {
       if (image) {
-        onSendMessage(input, { type: "local-image", content: image, fileName: fileName || "Document File.docx" });
+        // FIX: Check if the uploaded content is actually an image base64
+        const isImgBase64 = image.startsWith("data:image/");
+        const fallbackName = isImgBase64 ? "uploaded_image.png" : "Document File.docx";
+        
+        onSendMessage(input, { 
+          type: isImgBase64 ? "local-image" : "local-file", 
+          content: image, 
+          fileName: fileName || fallbackName 
+        });
       } else {
         onSendMessage(input, null);
       }

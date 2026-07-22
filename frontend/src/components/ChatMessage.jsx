@@ -143,7 +143,18 @@ export default function ChatMessage({ message }) {
   };
 
   const displayName = message.fileName || "Attached file";
-  const isImageFile = /\.(jpg|jpeg|png|webp|gif)$/i.test(displayName) || (message.image && message.image.startsWith("data:image/"));
+  
+  // FIX: Robust image detection. It checks extension, data URL, blob, cloud URL patterns AND explicitly passed message types.
+  const isImageFile = 
+    message.type === "local-image" || 
+    /\.(jpg|jpeg|png|webp|gif|bmp|svg)(\?.*)?$/i.test(displayName) || 
+    (message.image && (
+      message.image.startsWith("data:image/") || 
+      message.image.startsWith("blob:") ||
+      /\.(jpg|jpeg|png|webp|gif|bmp|svg)(\?.*)?$/i.test(message.image) ||
+      message.image.includes("res.cloudinary.com") ||
+      message.image.includes("firebasestorage")
+    ));
 
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-4 animate-fadeIn px-1 min-w-0`}>
@@ -212,8 +223,8 @@ export default function ChatMessage({ message }) {
             </div>
 
             <p className="text-xs text-gray-500 leading-relaxed">
-              What You want Read File Or Download?
-                </p>
+              What do you want to do with this file?
+            </p>
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
