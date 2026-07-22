@@ -5,8 +5,7 @@ import ChatInput from "./components/ChatInput";
 import useGemini from "./hooks/useGemini";
 import Auth from "./components/Auth";
 
-// Dynamic API base URL support for Vercel & Localhost
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 export default function App() {
   const { 

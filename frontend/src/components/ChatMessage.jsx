@@ -67,7 +67,7 @@ function AIImageCard({ targetImageUrl }) {
         </div>
       )}
     </div>
-  );
+  ); 
 }
 
 export default function ChatMessage({ message }) {
