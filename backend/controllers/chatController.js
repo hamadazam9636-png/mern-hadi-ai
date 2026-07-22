@@ -111,12 +111,43 @@ export async function saveMessage(req, res) {
       }
     }
 
+    // Convert image path / filename to a Base64 Data URL so it displays properly in user message box
+    let finalImage = image || null;
+    if (finalImage && !finalImage.startsWith("data:image/")) {
+      let filename = "";
+      if (finalImage.includes("/uploads/")) {
+        filename = finalImage.split("/uploads/")[1];
+      } else {
+        filename = path.basename(finalImage);
+      }
+
+      const isVercel = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+      const uploadDir = isVercel ? "/tmp" : path.join(process.cwd(), "uploads");
+      const filePath = path.join(uploadDir, filename);
+
+      if (fs.existsSync(filePath)) {
+        try {
+          const ext = path.extname(filename).toLowerCase();
+          const imageBuffer = fs.readFileSync(filePath);
+          const base64Image = imageBuffer.toString("base64");
+          let mimeType = "image/jpeg";
+          if (ext === ".png") mimeType = "image/png";
+          else if (ext === ".webp") mimeType = "image/webp";
+          else if (ext === ".gif") mimeType = "image/gif";
+
+          finalImage = `data:${mimeType};base64,${base64Image}`;
+        } catch (err) {
+          console.error("Image base64 conversion error:", err);
+        }
+      }
+    }
+
     const userMessage = {
       _id: new ObjectId(),
       sessionId: new ObjectId(sessionId),
       role: "user",
       text: text || "",
-      image: image || null,
+      image: finalImage,
       type: type || "chat",
       createdAt: new Date()
     };
@@ -133,7 +164,7 @@ export async function saveMessage(req, res) {
       aiGeneratedImage = `https://pollinations.ai/p/${encodeURIComponent(promptText)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&nologo=true`;
       aiText = `Here is your generated image for: "${promptText}"`;
     } else {
-      let activeImage = image || null;
+      let activeImage = finalImage;
 
       if (!activeImage) {
         const lastImageMsg = await db.collection("messages").findOne(
@@ -154,7 +185,6 @@ export async function saveMessage(req, res) {
         let isVisionModel = false;
 
         if (activeImage) {
-          // If the image is sent as a Base64 data string from frontend (Vercel-friendly)
           if (activeImage.startsWith("data:image/")) {
             isVisionModel = true;
             messageContent = [
@@ -167,7 +197,6 @@ export async function saveMessage(req, res) {
               }
             ];
           } else {
-            // Local file fallback
             let filename = "";
             if (activeImage.includes("/uploads/")) {
               filename = activeImage.split("/uploads/")[1];
