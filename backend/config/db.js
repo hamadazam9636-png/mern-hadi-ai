@@ -5,10 +5,9 @@ dotenv.config();
 
 let cachedClient = null;
 let cachedDb = null;
-let indexesCreated = false;
 
 export async function connectDB() {
-  // 1. Agar connection pehle se active hai, toh wohi return kar do (Serverless Caching)
+  // Agar connection pehle se cached hai toh wo return karo
   if (cachedDb) {
     return cachedDb;
   }
@@ -21,39 +20,30 @@ export async function connectDB() {
   }
 
   try {
-    // 2. Safe lazy initialization for serverless
     if (!cachedClient) {
       cachedClient = new MongoClient(uri, {
         maxPoolSize: 10,
-        minPoolSize: 0, // Serverless ke liye minPoolSize 0 rakhein taake idle connections auto-close hon
+        minPoolSize: 0
       });
       await cachedClient.connect();
     }
 
-    cachedDb = cachedClient.db(dbName);
+    cachedDb = cachedClient.db(dbName || "test");
 
-    // 3. Background index creation (Yeh serverless startup ko slow nahi karega)
-    if (!indexesCreated) {
-      indexesCreated = true;
-      Promise.all([
-        cachedDb.collection("users").createIndex({ email: 1 }, { unique: true }),
-        cachedDb.collection("sessions").createIndex({ userId: 1 }),
-        cachedDb.collection("messages").createIndex({ sessionId: 1 })
-      ]).catch((err) => console.warn("Index creation warning:", err.message));
-    }
+    // Background Indexing (non-blocking)
+    cachedDb.collection("users").createIndex({ email: 1 }, { unique: true }).catch(() => {});
+    cachedDb.collection("sessions").createIndex({ userId: 1 }).catch(() => {});
+    cachedDb.collection("messages").createIndex({ sessionId: 1 }).catch(() => {});
 
     console.log("🚀 Native MongoDB Connected Successfully");
     return cachedDb;
   } catch (error) {
     console.error("MongoDB Connection Error:", error);
-    // NEVER use process.exit(1) on Vercel
     throw error;
   }
 }
 
+// Safe getDB function without throwing unhandled exceptions
 export function getDB() {
-  if (!cachedDb) {
-    throw new Error("Database not initialized. Ensure connectDB() is called.");
-  }
   return cachedDb;
 }

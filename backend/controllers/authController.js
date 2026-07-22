@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { getDB, connectDB } from "../config/db.js";
+import { connectDB } from "../config/db.js";
 
 const generateToken = (id) => {
   const secret = process.env.JWT_SECRET || "fallback_secret_key";
@@ -11,23 +11,15 @@ export async function registerUser(req, res) {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "All input payloads are required" });
+      return res.status(400).json({ success: false, message: "All input fields are required" });
     }
 
-    // Safely get DB connection in serverless
-    let db = getDB();
-    if (!db && typeof connectDB === "function") {
-      const conn = await connectDB();
-      db = conn.db || conn;
-    }
-
-    if (!db) {
-      throw new Error("Database connection could not be established.");
-    }
+    // Direct await connectDB() to prevent uninitialized error
+    const db = await connectDB();
 
     const userExists = await db.collection("users").findOne({ email });
     if (userExists) {
-      return res.status(400).json({ success: false, message: "Identity parameter conflict" });
+      return res.status(400).json({ success: false, message: "User already exists with this email" });
     }
 
     const salt = await bcrypt.genSalt(12);
@@ -56,24 +48,15 @@ export async function registerUser(req, res) {
 export async function loginUser(req, res) {
   try {
     const { email, password } = req.body;
-    
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
-    // Safely get DB connection in serverless
-    let db = getDB();
-    if (!db && typeof connectDB === "function") {
-      const conn = await connectDB();
-      db = conn.db || conn;
-    }
-
-    if (!db) {
-      throw new Error("Database connection could not be established.");
-    }
+    // Direct await connectDB() guarantees connected DB instance
+    const db = await connectDB();
 
     const user = await db.collection("users").findOne({ email });
-
+    
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
         success: true,
@@ -81,7 +64,7 @@ export async function loginUser(req, res) {
         token: generateToken(user._id)
       });
     } else {
-      res.status(401).json({ success: false, message: "Invalid client credentials" });
+      res.status(401).json({ success: false, message: "Invalid email or password" });
     }
   } catch (error) {
     console.error("LOGIN ERROR:", error);
