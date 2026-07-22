@@ -2,7 +2,12 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = path.join(process.cwd(), "uploads");
+// Check if running on Vercel / Production
+const isVercel = process.env.VERCEL || process.env.NODE_ENV === "production";
+
+// Vercel par temp write access ke liye '/tmp' use hoga, local par 'uploads' folder
+const uploadDir = isVercel ? "/tmp" : path.join(process.cwd(), "uploads");
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -35,6 +40,6 @@ const fileFilter = (req, file, cb) => {
 
 export const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // Limit increased to 10MB safely
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: fileFilter
 });
